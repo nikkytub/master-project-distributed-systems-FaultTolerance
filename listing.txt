@@ -1,0 +1,150 @@
+-----------------------
+For Docker set up
+-----------------------
+**Had to clean up Docker file for missing libs in alpine
+
+** Build project
+- mvn clean package -DskipTests
+
+** Build docker image
+./build-sh --from-local-dist
+
+----------------------------
+1 - create network
+----------------------------
+$ docker network create flink_net --opt com.docker.network.bridge.name=flink_net --opt com.docker.network.bridge.host_binding_ipv4=0.0.0.0 --opt com.docker.network.bridge.enable_icc=true --opt com.docker.network.bridge.enable_ip_masquerade=true
+
+--need this to reach external scheduler from containers
+$ iptables -A INPUT -i flink_net -j ACCEPT
+
+
+----------------------------
+2 - start hadoop 
+----------------------------
+$ docker run -d --net=flink_net --name hadoop --expose 9000 --expose 8020 -p 50070:50070 -p 50010:50010 -p 8088:8088 -p 9000:9000 -p 8020:8020 sequenceiq/hadoop-docker:2.7.1
+
+
+----------------------------
+3 - start external scheduler
+----------------------------
+* Did this in intellij on localhost
+* Make sure to change jobmanager.scheduler.external.rpc.address: in flink.conf from <localhost> to <Docker Host IP> (where the scheduler resides)
+
+
+----------------------------
+4 - start zookeeper quorum
+----------------------------
+$ docker run -d --net=flink_net --name=zookeeper -p 2181:2181 -e ZOOKEEPER_CLIENT_PORT=2181 -e ZOOKEEPER_TICK_TIME=2000 -e ZOOKEEPER_SYNC_LIMIT=2 -e ZOO_SERVER_ID=1 zookeeper:latest
+
+
+----------------------------
+5 - start docker containers
+----------------------------
+
+*********
+** I used the python script to build the cluster but this would have been my equiv calls
+** But you can also use the docker-compose up
+
+** Notice the jobmanagers are routed from localhost ports to port 8081 on the docker containers
+localhost:48085 -> container:8081
+localhost:48086 -> container:8081
+*********
+
+$ docker run --net=flink_net --name jobmanager1 --env JOB_MANAGER_RPC_ADDRESS=jobmanager --cpus="0.60" --memory="600M" --expose 6123 -p 48085:8081 flink:latest jobmanager
+
+$ docker run --net=flink_net --name jobmanager2 --env JOB_MANAGER_RPC_ADDRESS=jobmanager --cpus="0.60" --memory="600M" --expose 6123 -p 48086:8081 flink:latest jobmanager
+
+$ docker run --net=flink_net --name taskmanager1 --env JOB_MANAGER_RPC_ADDRESS=jobmanager --cpus="0.50" --memory="500M" --expose 6121 --expose 6122 flink:latest taskmanager
+
+$ docker run --net=flink_net --name taskmanager2 --env JOB_MANAGER_RPC_ADDRESS=jobmanager --cpus="0.50" --memory="500M" --expose 6121 --expose 6122 flink:latest taskmanager
+
+$ docker run --net=flink_net --name taskmanager3 --env JOB_MANAGER_RPC_ADDRESS=jobmanager --cpus="0.50" --memory="500M" --expose 6121 --expose 6122 flink:latest taskmanager
+
+$ docker run --net=flink_net --name taskmanager4 --env JOB_MANAGER_RPC_ADDRESS=jobmanager --cpus="0.40" --memory="400M" --expose 6121 --expose 6122 flink:latest taskmanager
+
+$ docker run --net=flink_net --name taskmanager5 --env JOB_MANAGER_RPC_ADDRESS=jobmanager --cpus="0.40" --memory="400M" --expose 6121 --expose 6122 flink:latest taskmanager
+
+$ docker run --net=flink_net --name taskmanager6 --env JOB_MANAGER_RPC_ADDRESS=jobmanager --cpus="0.30" --memory="300M" --expose 6121 --expose 6122 flink:latest taskmanager
+
+$ docker run --net=flink_net --name taskmanager7 --env JOB_MANAGER_RPC_ADDRESS=jobmanager --cpus="0.30" --memory="300M" --expose 6121 --expose 6122 flink:latest taskmanager
+
+$ docker run --net=flink_net --name taskmanager8 --env JOB_MANAGER_RPC_ADDRESS=jobmanager --cpus="0.30" --memory="300M" --expose 6121 --expose 6122 flink:latest taskmanager
+
+-------------------
+6 - Install Pumba
+-------------------
+
+#https://www.gremlin.com/chaos-monkey/chaos-monkey-alternatives/docker
+
+$ sudo curl -L https://github.com/alexei-led/pumba/releases/download/0.5.2/pumba_linux_amd64 -o /usr/bin/pumba
+$ sudo chmod +x /usr/bin/pumba
+
+
+--------------------------------------
+7 - Install weavescope for monitoring
+--------------------------------------
+
+** https://thenewstack.io/how-to-detect-map-and-monitor-docker-containers-with-weave-scope-from-weaveworks/
+**Will launch a web ui at http://localhost_ip:4040
+
+$ wget -O scope git.io/scope
+$ chmod a+x ./scope
+$ ./scope launch
+
+
+-------------------
+8 - Run program
+-------------------
+
+-ssh into jobmanager container to run jar files
+
+$ sudo docker exec -it $(sudo docker ps --filter name=flink_jobmanager --format={{.ID}}) /bin/sh
+$ cd opt/flink
+
+-Test benchmarks
+
+** Must run the command <$ nc -l 9999> on the host specified in param
+** Edge scheduler ip:port MUST be defined in flink-conf.yaml and running
+** Have at least 5 task slots available for testing 
+
+$ ./bin/flink run examples/edge/ForestTemperatureWithCheckpoints.jar --checkpoint true --external true --operatorChain false --host <host_ip> --port 9999
+
+$ ./bin/flink run examples/edge/AsyncIOExample.jar --failRatio 0 --external true --operatorChain false --checkpointMode exactly_once
+
+
+----------------------
+9 - Remove containers
+----------------------
+#docker-compose down
+#docker rm $(docker ps -aq)
+
+docker rm -f $(docker ps -a --filter name=flink_jobmanager --format={{.ID}})
+docker rm -f $(docker ps -a --filter name=flink_taskmanager --format={{.ID}})
+
+
+----------------------------
+-- For swarm mode (optional)
+----------------------------
+1 Make image avail
+**NOTE - make sure to change image param to => image: localhost:5000/flink:latest**
+
+docker run -d -p 5000:5000 --restart=always --name registry registry:2
+docker tag image_id localhost:5000/flink:latest
+docker push localhost:5000/flink:latest
+
+2 Bring up swarm
+docker swarm init
+docker network ls
+docker stack deploy -c docker-compose.yml flink
+
+docker ps
+**get flink_jobmanager_name here
+
+docker stats
+**see cpu, mem resources
+
+sudo docker exec -it flink_jobmanager_name sh
+**ssh into jobmanager to run jars
+
+docker stack rm flink
+docker stop registry

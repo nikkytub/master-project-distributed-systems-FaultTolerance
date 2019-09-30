@@ -1,0 +1,183 @@
+version: "2.1"
+services:
+  jobmanager:
+    image: ${FLINK_DOCKER_IMAGE_NAME:-flink}
+    expose:
+      - "6123"
+    ports:
+      - "48085:8081"
+    command: jobmanager
+    cpu_shares: 155
+    mem_limit: 600M
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+    networks:
+      - flink_net
+
+  jobmanager2:
+    image: ${FLINK_DOCKER_IMAGE_NAME:-flink}
+    expose:
+      - "6123"
+    ports:
+      - "48086:8081"
+    command: jobmanager
+    cpu_shares: 155
+    mem_limit: 600M
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+    networks:
+      - flink_net
+
+  taskmanager_cloud1:
+    image: ${FLINK_DOCKER_IMAGE_NAME:-flink}
+    cpu_shares: 150
+    mem_limit: 550M
+    expose:
+      - "6121"
+      - "6122"
+    depends_on:
+      - jobmanager
+      - jobmanager2
+    command: taskmanager
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+      - ID=1
+      - LOCATION=Cloud
+      - NEIGHBORS=4
+    networks:
+      - flink_net
+
+  taskmanager_cloud2:
+    image: ${FLINK_DOCKER_IMAGE_NAME:-flink}
+    cpu_shares: 150
+    mem_limit: 550M
+    expose:
+      - "6121"
+      - "6122"
+    depends_on:
+      - jobmanager
+      - jobmanager2
+    command: taskmanager
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+      - ID=2
+      - LOCATION=Cloud
+      - NEIGHBORS=5
+    networks:
+      - flink_net
+
+  taskmanager_cloud3:
+    image: ${FLINK_DOCKER_IMAGE_NAME:-flink}
+    cpu_shares: 150
+    mem_limit: 550M
+    expose:
+      - "6121"
+      - "6122"
+    depends_on:
+      - jobmanager
+      - jobmanager2
+    command: taskmanager
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+      - ID=3
+      - LOCATION=Cloud
+      - NEIGHBORS=5
+    networks:
+      - flink_net
+
+  taskmanager_fog4:
+    image: ${FLINK_DOCKER_IMAGE_NAME:-flink}
+    cpu_shares: 100
+    mem_limit: 450M
+    expose:
+      - "6121"
+      - "6122"
+    depends_on:
+      - jobmanager
+      - jobmanager2
+    command: taskmanager
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+      - ID=4
+      - LOCATION=Fog
+      - NEIGHBORS=6
+    networks:
+      - flink_net
+
+  taskmanager_fog5:
+    image: ${FLINK_DOCKER_IMAGE_NAME:-flink}
+    cpu_shares: 100
+    mem_limit: 450M
+    expose:
+      - "6121"
+      - "6122"
+    depends_on:
+      - jobmanager
+      - jobmanager2
+    command: taskmanager
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+      - ID=5
+      - LOCATION=Fog
+      - NEIGHBORS=7;8
+    networks:
+      - flink_net
+
+  taskmanager_edge6:
+    image: ${FLINK_DOCKER_IMAGE_NAME:-flink}
+    cpu_shares: 50
+    mem_limit: 350M
+    expose:
+      - "6121"
+      - "6122"
+    depends_on:
+      - jobmanager
+      - jobmanager2
+    command: taskmanager
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+      - ID=6
+      - LOCATION=Edge
+    networks:
+      - flink_net
+
+  taskmanager_edge7:
+    image: ${FLINK_DOCKER_IMAGE_NAME:-flink}
+    cpu_shares: 50
+    mem_limit: 350M
+    expose:
+      - "6121"
+      - "6122"
+    depends_on:
+      - jobmanager
+      - jobmanager2
+    command: taskmanager
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+      - ID=7
+      - LOCATION=Edge
+    networks:
+      - flink_net
+
+  taskmanager_edge8:
+    image: ${FLINK_DOCKER_IMAGE_NAME:-flink}
+    cpu_shares: 50
+    mem_limit: 350M
+    expose:
+      - "6121"
+      - "6122"
+    depends_on:
+      - jobmanager
+      - jobmanager2
+    command: taskmanager
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+      - ID=8
+      - LOCATION=Edge
+    networks:
+      - flink_net
+
+networks:
+  flink_net:
+    external:
+      name: flink_net
