@@ -76,8 +76,8 @@ example,
 $ bin/flink run -c wikiedits.ForestTempWithCheckpointsMem wiki-edits.jar --host 192.168.178.27 --port 9000
 ```
 
-##HDFS Deployment
-#For more detailed commands look in listings.txt
+## HDFS Deployment
+# For more detailed commands look in listings.txt
 
 For Docker set up
 ```
