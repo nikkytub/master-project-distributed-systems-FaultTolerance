@@ -77,9 +77,9 @@ $ bin/flink run -c wikiedits.ForestTempWithCheckpointsMem wiki-edits.jar --host 
 ```
 
 ## HDFS Deployment
-# For more detailed commands look in listings.txt
+For more detailed commands look in listings.txt
 
-For Docker set up
+Apache Flink unpackage for Docker set up
 ```
 $ mvn clean package -DskipTests
 $ ./build-sh --from-local-dist
