@@ -2,6 +2,7 @@
 For Docker set up
 -----------------------
 **Had to clean up Docker file for missing libs in alpine
+**Also had to modify the log4j-console file in Apache Flink to output logs from docker to the web interface
 
 ** Build project
 - mvn clean package -DskipTests
